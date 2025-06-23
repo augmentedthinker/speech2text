@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Transcription Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            justify-content: center;
+        }
+        
+        #startButton {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: background-color 0.3s;
+        }
+        
+        #startButton:hover {
+            background-color: #45a049;
+        }
+        
+        #startButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        #transcriptionDisplay {
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+            text-align: center;
+            min-height: 100px;
+            max-width: 80%;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            line-height: 1.4;
+        }
+        
+        #status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #666;
+            text-align: center;
+        }
+        
+        .listening {
+            border-color: #4CAF50 !important;
+            background-color: #f0fff0 !important;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <h1>Voice Transcription Test</h1>
+    
+    <button id="startButton">Start Listening</button>
+    
+    <div id="transcriptionDisplay">
+        Click "Start Listening" and speak into your microphone...
+    </div>
+    
+    <div id="status">Ready to listen</div>
+    
+    <script>
+        // Check if browser supports Speech Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            document.getElementById('status').innerHTML = '<span class="error">Speech Recognition not supported in this browser</span>';
+            document.getElementById('startButton').disabled = true;
+        } else {
+            // Initialize speech recognition
+            const recognition = new SpeechRecognition();
+            
+            // Configuration
+            recognition.continuous = true;  // Keep listening
+            recognition.interimResults = true;  // Show results as you speak
+            recognition.lang = 'en-US';  // Set language
+            
+            // DOM elements
+            const startButton = document.getElementById('startButton');
+            const transcriptionDisplay = document.getElementById('transcriptionDisplay');
+            const status = document.getElementById('status');
+            
+            let isListening = false;
+            let finalTranscript = '';
+            
+            // Button click handler
+            startButton.addEventListener('click', () => {
+                if (!isListening) {
+                    startListening();
+                } else {
+                    stopListening();
+                }
+            });
+            
+            function startListening() {
+                finalTranscript = '';
+                transcriptionDisplay.textContent = '';
+                transcriptionDisplay.classList.add('listening');
+                
+                recognition.start();
+                isListening = true;
+                startButton.textContent = 'Stop Listening';
+                startButton.style.backgroundColor = '#ff4444';
+                status.textContent = 'Listening... Speak now!';
+            }
+            
+            function stopListening() {
+                recognition.stop();
+                isListening = false;
+                startButton.textContent = 'Start Listening';
+                startButton.style.backgroundColor = '#4CAF50';
+                transcriptionDisplay.classList.remove('listening');
+                status.textContent = 'Stopped listening';
+            }
+            
+            // Handle speech recognition results
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                
+                // Process all results
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                // Display current text (final + interim)
+                transcriptionDisplay.textContent = finalTranscript + interimTranscript;
+                
+                // Auto-scroll to show new text
+                transcriptionDisplay.scrollTop = transcriptionDisplay.scrollHeight;
+            };
+            
+            // Handle errors
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                status.innerHTML = `<span class="error">Error: ${event.error}</span>`;
+                
+                if (event.error === 'not-allowed') {
+                    status.innerHTML = '<span class="error">Microphone access denied. Please allow microphone permissions.</span>';
+                }
+                
+                stopListening();
+            };
+            
+            // Handle when recognition service disconnects
+            recognition.onend = () => {
+                if (isListening) {
+                    // Automatically restart if we were supposed to be listening
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.log('Recognition restart failed:', e);
+                        stopListening();
+                    }
+                }
+            };
+            
+            // Handle when recognition starts
+            recognition.onstart = () => {
+                status.textContent = 'Listening... Speak now!';
+            };
+        }
+    </script>
+</body>
+</html>
